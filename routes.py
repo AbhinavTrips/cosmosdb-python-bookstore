@@ -29,10 +29,10 @@ async def remove_comment(request: Request, id: str, pk: str, comment_index: int)
     return response
 
 @router.get("/get20Books", response_description="List of all books")
-async def list_books20(request: Request, page_offset: int = 0, limit: int = 20):
+async def list_books20(request: Request, page_offset: int = 0, limit: int = 20, rating: float = 0.0, genre: str = None, author: str = None, title: str = None, sortby: str = "title"):
     books_container = request.app.books_container
     query_items_response = books_container.query_items(
-            query="SELECT c.title, c.author, c.img FROM c ORDER BY c.title OFFSET @offset LIMIT @limit",
+            query="SELECT c.title, c.author, c.img, c.rating, c.format FROM c  WHERE c.rating > @rating ORDER BY c."+sortby+" OFFSET @offset LIMIT @limit",
             parameters=[
                 dict(
                     name="@offset",
@@ -41,7 +41,11 @@ async def list_books20(request: Request, page_offset: int = 0, limit: int = 20):
                 dict(
                     name="@limit",
                     value=limit
-                )
+                ),
+            dict(
+                name="@rating",
+                value=rating
+                )            
             ]
         )
         
