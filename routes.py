@@ -19,7 +19,7 @@ async def get_book_by_id(request: Request, id: str, pk: str):
     book = await request.app.books_container.read_item(id, partition_key=pk)
     return book
 
-@router.post("/removeComment", response_description="Remove a comment from a book", response_model=Book)
+@router.patch("/removeComment", response_description="Remove a comment from a book", response_model=Book)
 async def remove_comment(request: Request, id: str, pk: str, comment_index: int):
     books_container = request.app.books_container
     operations = [
@@ -32,7 +32,7 @@ async def remove_comment(request: Request, id: str, pk: str, comment_index: int)
 async def list_books20(request: Request, page_offset: int = 0, limit: int = 20, rating: float = 0.0, genre: str = None, author: str = None, title: str = None, sortby: str = "title"):
     books_container = request.app.books_container
     query_items_response = books_container.query_items(
-            query="SELECT c.title, c.author, c.img, c.rating, c.format FROM c  WHERE c.rating > @rating ORDER BY c."+sortby+" OFFSET @offset LIMIT @limit",
+            query="SELECT c.title, c.author, c.img, c.rating FROM c  WHERE c.rating > @rating ORDER BY c."+sortby+" OFFSET @offset LIMIT @limit",
             parameters=[
                 dict(
                     name="@offset",
@@ -51,3 +51,21 @@ async def list_books20(request: Request, page_offset: int = 0, limit: int = 20, 
         
     items = [jsonable_encoder(book) async for book in query_items_response]
     return JSONResponse(content=items)
+
+@router.patch("/addComment", response_description="Add a new comment for a book")
+async def add_comment(request: Request, id: str, pk: str, comment_name: str, comment: str):
+    new_comment = { "name": comment_name, "comment": comment }
+    books_container = request.app.books_container
+    book = await books_container.read_item(id, partition_key=pk)
+    if "reviewcomments" in book:
+        print(book["reviewcomments"])
+        book["reviewcomments"].append(new_comment)
+    else:
+        book["reviewcomments"] = [new_comment]
+    operations = [
+        { "op": 'set', "path": '/reviewcomments', "value":book["reviewcomments"]}
+    ]
+    response = jsonable_encoder(await books_container.patch_item(item=id, partition_key=pk, patch_operations=operations))
+    return JSONResponse(response)
+
+
